@@ -8,6 +8,8 @@
 """
 
 import json
+
+from selenium.webdriver.common.by import By
 from splinter import Browser
 from selenium.webdriver.chrome.service import Service
 # from selenium.webdriver.common.by import By
@@ -31,6 +33,8 @@ def save_cookie(cookies):
 class Spider_Dean_Office:
     def __init__(self, driver='edge', driver_dir=None, user_id=None, user_password=None, course=None):
         # System Initiating
+
+        """
         if driver_dir:  # 添加驱动路径
             if driver == 'edge':
                 self.driver = './edgedriver/' + driver_dir
@@ -40,14 +44,16 @@ class Spider_Dean_Office:
                 self.driver = './' + driver_dir
         else:
             self.driver_dir = './edgedriver/msedgedriver.exe'
+        """
         self.current_path = os.path.dirname(os.path.abspath(__file__))
         # Browser Data
         if driver == 'edge':
-            local_service = Service(executable_path=self.driver)
+            local_service = Service(executable_path="./edgedriver/msedgedriver.exe")
             self.browser = Browser(driver_name='edge', service=local_service)
         elif driver == 'chrome':
-            local_service = Service(executable_path=self.driver)  # 参考:https://splinter.readthedocs.io/en/latest/drivers/chrome.html
-            self.browser = Browser(driver_name='chrome', service=local_service)
+            # local_service = Service(executable_path=self.driver)  #
+            # 参考:https://splinter.readthedocs.io/en/latest/drivers/chrome.html
+            self.browser = Browser(driver_name='chrome')
         # Web data
         self.url = "http://jwgl.usst.edu.cn/sso/jziotlogin"
         if user_id and user_password:
@@ -68,7 +74,8 @@ class Spider_Dean_Office:
         :param path: Prescribed route
         :return:
         """
-        log_dict = {"Success": "目标课程选上成功", "Lesson_Chosen": "检测到目标课程已选上", "Lesson_Repeated": "检测到重复选课行为"}
+        log_dict = {"Success": "目标课程选上成功", "Lesson_Chosen": "检测到目标课程已选上",
+                    "Lesson_Repeated": "检测到重复选课行为"}
         if log not in log_dict.keys():
             log_content = "Unknown Operation"
         else:
@@ -139,8 +146,13 @@ class Spider_Dean_Office:
         切换至选课页面
         :return:
         """
+        """
         self.browser.find_by_css('#cdNav > ul > li:nth-child(3)').click()
         self.browser.find_by_css('#cdNav > ul > li.dropdown.open > ul').click()
+        """
+        self.browser.find_by_text("选课").click()  # click to select course
+        time.sleep(1)
+        self.browser.find_by_text("自主选课").click()
         time.sleep(1)
         # switch to the target handle
         window = self.browser.windows[0]
@@ -185,22 +197,21 @@ class Spider_Dean_Office:
             path = r"./PersonInfo.txt"
         with open(path, 'r', encoding='utf-8') as fp:
             contents = fp.readlines()
-            self.user_id = re.findall(r"=(.*?)$", contents[0].replace("\n", "").replace(" ", ""))[0]
-            self.user_password = re.findall(r"=(.*?)$", contents[1].replace("\n", "").replace(" ", ""))[0]
+            self.user_id = contents[0].strip()
+            self.user_password = contents[1].strip()
         return list((self.user_id, self.user_password))
 
     def getCourseInfo(self, path=None):
+
         if not path:
             path = r"./CourseInfo.txt"
         with open(path, 'r', encoding='utf-8') as fp:
             contents = fp.readlines()
-            for content in contents:
-                if content != "\n":
-                    content = content.replace("\n", "")
-                    print(content)
-                    teacher_name = re.findall(r"(.*?)-", content)[0]
-                    lesson_name = re.findall(r"-(.*?)$", content)[0]
-                    self.courseInfo.append(tuple((teacher_name, lesson_name)))
+            teacher_name = contents[0].strip()
+            lesson_name = contents[1].strip()
+            time_name = contents[2].strip()
+            self.courseInfo.append(tuple((teacher_name, lesson_name, time_name)))
+
         return self.courseInfo
 
     def concurrent_search(self):
@@ -215,67 +226,73 @@ class Spider_Dean_Office:
         while True:
             courses = courseInfo
             if courses:
-                for (teacher_name, lesson_name) in courses:
-                    Shot = self.send_search(teacher_name=teacher_name, lesson_name=lesson_name)
+                for (teacher_name, lesson_name, time_name) in courses:
+                    Shot = self.send_search(teacher_name=teacher_name, lesson_name=lesson_name, time_name=time_name)
                     if Shot:
-                        courseInfo.remove(tuple((teacher_name, lesson_name)))
+                        courseInfo.remove(tuple((teacher_name, lesson_name, time_name)))
                         break
             else:
                 break
+            time.sleep(5)
 
-    def send_search(self, teacher_name, lesson_name):
+    def send_search(self, teacher_name, lesson_name, time_name):
         Shot = False
         inputBox = self.browser.find_by_xpath('//*[@id="searchBox"]/div/div[1]/div/div/div/div/input')
         # //*[@id="searchBox"]/div/div[1]/div/div/div/div/input
         inputBox.clear()
         inputBox.fill(teacher_name)
-        time.sleep(0.1)
+        time.sleep(1)
         self.browser.find_by_xpath('//*[@id="searchBox"]/div/div[1]/div/div/div/div/span/button[1]').first.click()
-        time.sleep(0.3)
-        self.browser.find_by_xpath('//*[@id="nav_tab"]/li[2]').first.click()  # select from general lessons
-        time.sleep(0.5)
-        courseBoxes = self.browser.find_by_css('#contentBox > div.tjxk_list > div.panel.panel-info')  # box: one kind of course
-        for box in courseBoxes:
-            if lesson_name in box.text:  # confirm the lesson name
-                box.click()
-                time.sleep(0.3)
-                courseBars = box.find_by_css('tr[class="body_tr"]')  # bar: one specific course
-                time.sleep(0.3)
-                for bar in courseBars:
-                    if teacher_name in bar.text:  # confirm the teacher name
-                        # print(bar.text)
-                        if '已满' in bar.text:
-                            continue
-                        if '退选' in bar.text:
-                            Shot = True
-                            self.log("Success")
-                            break
-                        # search for location of the button and click it
-                        button_box = bar.find_by_css('td[class="an"]').first
-                        time.sleep(0.1)
-                        btn = button_box.find_by_css('.btn').first
-                        # print(btn.get_attribute('disabled'))
-                        # if btn.get_attribute('disabled') == 'disabled':
-                        #     Shot = True
-                        #     break
-                        btn.click()
-                        time.sleep(0.1)
-                        # deal with possible alerts
-                        try:
-                            alert = self.browser.find_by_css('.modal-content')
-                        except:
-                            alert = None
-                        time.sleep(0.1)
-                        if alert:
-                            # Todo:写选课时间冲突的问题
-                            if "最多可选" in alert.text:  # "一门课程最多可选1个志愿"
-                                print("你已经选了这门课")
-                                alert.find_by_id('btn_ok').first.click()
+        time.sleep(1)
+        for i in range(1, 3):
+            self.browser.find_by_xpath('//*[@id="nav_tab"]/li['+str(i)+']').first.click()  # select from general lessons
+            time.sleep(1)
+
+            courseBoxes = self.browser.find_by_css(
+                '#contentBox > div.tjxk_list > div.panel.panel-info')  # box: one kind of course
+            for box in courseBoxes:
+                if lesson_name in box.text:  # confirm the lesson name
+                    elements = box.find_by_css('a.expand_close.expand1')
+                    if elements:
+                        box.click()
+                    time.sleep(1)
+                    courseBars = box.find_by_css('tr[class="body_tr"]')  # bar: one specific course
+                    time.sleep(0.3)
+                    for bar in courseBars:
+                        if teacher_name in bar.text and time_name in bar.text:  # confirm the teacher name
+                            # print(bar.text)
+                            if '已满' in bar.text:
+                                continue
+                            if '退选' in bar.text:
                                 Shot = True
-                                self.log("Lesson_Chosen")
+                                self.log("Success")
                                 break
-                            # print(alert.text)
-                            # alert.find_element(By.ID, 'btn_ok').click()
+                            # search for location of the button and click it
+                            button_box = bar.find_by_css('td[class="an"]').first
+                            time.sleep(0.1)
+                            btn = button_box.find_by_css('.btn').first
+                            # print(btn.get_attribute('disabled'))
+                            # if btn.get_attribute('disabled') == 'disabled':
+                            #     Shot = True
+                            #     break
+                            btn.click()
+                            time.sleep(0.1)
+                            # deal with possible alerts
+                            try:
+                                alert = self.browser.find_by_css('.modal-content')
+                            except:
+                                alert = None
+                            time.sleep(0.1)
+                            if alert:
+                                # Todo:写选课时间冲突的问题
+                                if "最多可选" in alert.text:  # "一门课程最多可选1个志愿"
+                                    print("你已经选了这门课")
+                                    alert.find_by_id('btn_ok').first.click()
+                                    Shot = True
+                                    self.log("Lesson_Chosen")
+                                    break
+                                # print(alert.text)
+                                # alert.find_element(By.ID, 'btn_ok').click()
         return Shot
 
 

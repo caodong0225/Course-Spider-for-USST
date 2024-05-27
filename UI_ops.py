@@ -44,8 +44,15 @@ class Dialog(QDialog):
         self.course_text = QLineEdit()
         self.course_text.setPlaceholderText('请输入课程名')
 
+        self.time_lab = QLabel()
+        self.time_lab.setText('时间：')
+        self.time_text = QLineEdit()
+        self.time_text.setPlaceholderText('请输入课程时间')
+
         fbox.addRow(self.teacher_lab, self.teacher_text)
         fbox.addRow(self.course_lab, self.course_text)
+        fbox.addRow(self.time_lab, self.time_text)
+
 
         vbox = QVBoxLayout()
         vbox.addLayout(fbox)
@@ -58,7 +65,8 @@ class Dialog(QDialog):
             print(parent.data_list)
             data = tuple([
                 self.teacher_text.text(),
-                self.course_text.text()
+                self.course_text.text(),
+                self.time_text.text()
                 ])
             parent.data_list.append(data)
             print(parent.data_list)

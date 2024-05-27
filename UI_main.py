@@ -60,24 +60,21 @@ class DataManager(QWidget):
         self.btn_edge.setChecked(True)  # 设置默认选中状态
         self.btn_edge.toggled.connect(lambda: self.switch2edge())  # 设置按钮的槽函数
 
-        self.btn_chrome = QRadioButton('谷歌浏览器')
-        self.btn_chrome.toggled.connect(lambda: self.switch2chrome())  # 设置按钮的槽函数
+        # self.btn_chrome = QRadioButton('谷歌浏览器')
+        # self.btn_chrome.toggled.connect(lambda: self.switch2chrome())  # 设置按钮的槽函数
 
         self.version_label = QLabel("浏览器版本")
         self.combo = QComboBox(self)
-        self.combo.addItems(["msedgedriver_112.exe", "msedgedriver_113.exe", "msedgedriver_114.exe",
-                             "msedgedriver_115.exe", "msedgedriver_116.exe", "msedgedriver_117.exe",
-                             "msedgedriver_118.exe", "msedgedriver_119.exe", "msedgedriver_120.exe",
-                             "msedgedriver_121.exe"])
-        self.combo.setCurrentIndex(1)
+        self.combo.addItems(["msedgedriver.exe"])
+        self.combo.setCurrentIndex(0)
 
         """数据列表设置"""
         self.cource_table = QTableWidget()
-        COLUMN = 2
+        COLUMN = 3
         ROW = 0
         self.cource_table.setColumnCount(COLUMN)
         self.cource_table.setRowCount(ROW)
-        h_table_header = ['教师名', '课程名']
+        h_table_header = ['教师名', '课程名', '时间']
         self.cource_table.setHorizontalHeaderLabels(h_table_header)
         self.cource_table.verticalHeader().setVisible(False)
         self.cource_table.setShowGrid(True)
@@ -106,7 +103,7 @@ class DataManager(QWidget):
         self.browser_widget = QWidget()  # 浏览器单选框
         radio_layout = QHBoxLayout()
         radio_layout.addWidget(self.btn_edge)
-        radio_layout.addWidget(self.btn_chrome)
+        # radio_layout.addWidget(self.btn_chrome)
         self.browser_widget.setLayout(radio_layout)
 
         self.version_widget = QWidget()  # 版本下拉框
